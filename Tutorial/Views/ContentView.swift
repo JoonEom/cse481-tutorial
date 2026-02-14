@@ -21,7 +21,6 @@ struct ContentView: View {
     
     var body: some View {
         VStack(spacing: 30) {
-            // Speech Bubble
             RoundedRectangle(cornerRadius: 20)
                 .fill(emotionClassifier.colorForEmotion(emotionClassifier.currentEmotion))
                 .frame(width: 400, height: 200)
@@ -34,11 +33,9 @@ struct ContentView: View {
                 )
                 .shadow(radius: 10)
             
-            // Emotion Label
             Text("Emotion: \(emotionClassifier.currentEmotion.capitalized)")
                 .font(.system(size: 20, weight: .semibold))
             
-            // Simulator Mode
             if isSimulator {
                 Toggle("Simulator Mode", isOn: $isSimulatorMode)
                     .padding(.horizontal)
@@ -56,9 +53,7 @@ struct ContentView: View {
                 }
             }
             
-            // Recording Button
             Button(action: {
-                print("🔘 Recording button tapped")
                 speechTranscriber.toggleRecording()
             }) {
                 HStack {
@@ -72,7 +67,6 @@ struct ContentView: View {
             }
             .disabled(speechTranscriber.authorizationStatus != .authorized || isSimulatorMode)
             
-            // Status indicator
             if speechTranscriber.isRecording {
                 HStack {
                     Circle()
@@ -84,7 +78,6 @@ struct ContentView: View {
                 }
             }
             
-            // Error message display
             if let errorMessage = speechTranscriber.errorMessage {
                 Text(errorMessage)
                     .font(.caption)
@@ -96,12 +89,8 @@ struct ContentView: View {
         .padding()
         .onChange(of: speechTranscriber.transcript) { oldValue, newValue in
             if !isSimulatorMode && !newValue.isEmpty {
-                print("🔄 Transcript changed, classifying emotion for: '\(newValue)'")
                 emotionClassifier.classifyEmotion(from: newValue)
             }
-        }
-        .onChange(of: emotionClassifier.currentEmotion) { oldValue, newValue in
-            print("😊 Emotion changed: \(oldValue) -> \(newValue)")
         }
         .onAppear {
             if !isSimulator && speechTranscriber.authorizationStatus == .notDetermined {
