@@ -59,10 +59,33 @@ class SpeechTranscriber: ObservableObject {
         // Clear any previous errors
         errorMessage = nil
         
-        // Check authorization
+        // Check speech recognition authorization
         guard authorizationStatus == .authorized else {
+            print("⚠️ Speech recognition not authorized. Requesting permission...")
             requestAuthorization()
             errorMessage = "Please grant speech recognition permission"
+            return
+        }
+        
+        // Check microphone permission
+        let micStatus = AVAudioSession.sharedInstance().recordPermission
+        if micStatus == .denied {
+            errorMessage = "Microphone permission denied. Please enable in Settings."
+            print("⚠️ Microphone permission denied")
+            return
+        } else if micStatus == .undetermined {
+            // Request microphone permission
+            AVAudioSession.sharedInstance().requestRecordPermission { [weak self] granted in
+                Task { @MainActor in
+                    if !granted {
+                        self?.errorMessage = "Microphone permission required"
+                        print("⚠️ Microphone permission not granted")
+                    } else {
+                        // Retry starting recording after permission granted
+                        self?.startRecording()
+                    }
+                }
+            }
             return
         }
         
@@ -81,9 +104,10 @@ class SpeechTranscriber: ObservableObject {
         do {
             try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+            print("✅ Audio session configured successfully")
         } catch {
             let errorMsg = "Audio session setup failed: \(error.localizedDescription)"
-            print(errorMsg)
+            print("❌ \(errorMsg)")
             errorMessage = errorMsg
             return
         }
@@ -92,7 +116,7 @@ class SpeechTranscriber: ObservableObject {
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
         guard let recognitionRequest = recognitionRequest else {
             let errorMsg = "Unable to create recognition request"
-            print(errorMsg)
+            print("❌ \(errorMsg)")
             errorMessage = errorMsg
             return
         }
@@ -102,6 +126,7 @@ class SpeechTranscriber: ObservableObject {
         // Get audio input node
         let inputNode = audioEngine.inputNode
         let recordingFormat = inputNode.outputFormat(forBus: 0)
+        print("🎤 Audio format: \(recordingFormat)")
         
         // Install tap on audio input
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
@@ -112,10 +137,13 @@ class SpeechTranscriber: ObservableObject {
         audioEngine.prepare()
         do {
             try audioEngine.start()
+            print("✅ Audio engine started - listening for speech...")
         } catch {
-            let errorMsg = "Audio engine failed to start: \(error.localizedDescription). This often happens in simulators."
-            print(errorMsg)
+            let errorMsg = "Audio engine failed to start: \(error.localizedDescription)"
+            print("❌ \(errorMsg)")
             errorMessage = errorMsg
+            // Clean up
+            inputNode.removeTap(onBus: 0)
             return
         }
         
@@ -125,36 +153,39 @@ class SpeechTranscriber: ObservableObject {
                 guard let self = self else { return }
                 
                 if let result = result {
-                    self.transcript = result.bestTranscription.formattedString
-                    self.errorMessage = nil // Clear error on success
+                    let newTranscript = result.bestTranscription.formattedString
+                    if newTranscript != self.transcript {
+                        print("📝 Transcript updated: '\(newTranscript)'")
+                        self.transcript = newTranscript
+                        self.errorMessage = nil // Clear error on success
+                    }
                 }
                 
                 // Handle errors
                 if let error = error {
                     let errorCode = (error as NSError).code
-                    print("Speech recognition error: \(error.localizedDescription) (code: \(errorCode))")
+                    print("❌ Speech recognition error: \(error.localizedDescription) (code: \(errorCode))")
                     
                     // Only stop on non-recoverable errors
                     if errorCode == 216 { // SFSpeechRecognizerErrorCode.audioEngineError
-                        self.errorMessage = "Audio engine error. Try again or use Simulator Mode."
+                        self.errorMessage = "Audio engine error. Try again."
                         self.stopRecording()
                     } else if errorCode != 0 {
                         // Other errors (but not 0 which is "no error")
                         self.errorMessage = "Recognition error: \(error.localizedDescription)"
                     }
                 }
-                
-                // Don't stop on final result - keep listening for continuous transcription
-                // The user will manually stop recording
             }
         }
         
         isRecording = true
         errorMessage = nil
+        print("🎙️ Recording started")
     }
     
     // Stop recording
     func stopRecording() {
+        print("🛑 Stopping recording...")
         recognitionTask?.cancel()
         recognitionTask = nil
         recognitionRequest?.endAudio()
@@ -167,6 +198,7 @@ class SpeechTranscriber: ObservableObject {
         try? AVAudioSession.sharedInstance().setActive(false)
         
         isRecording = false
+        print("✅ Recording stopped. Final transcript: '\(transcript)'")
     }
     
     // Toggle recording state

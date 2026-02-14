@@ -225,7 +225,11 @@ class EmotionClassifier: ObservableObject {
             
             // Map index to emotion label
             if maxIndex < emotionLabels.count {
-                currentEmotion = emotionLabels[maxIndex]
+                let newEmotion = emotionLabels[maxIndex]
+                if newEmotion != currentEmotion {
+                    print("😊 Emotion classified: \(newEmotion) (confidence: \(String(format: "%.2f", maxValue)))")
+                    currentEmotion = newEmotion
+                }
             } else {
                 currentEmotion = "unknown"
             }

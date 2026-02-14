@@ -58,6 +58,7 @@ struct ContentView: View {
             
             // Recording Button
             Button(action: {
+                print("🔘 Recording button tapped")
                 speechTranscriber.toggleRecording()
             }) {
                 HStack {
@@ -70,12 +71,37 @@ struct ContentView: View {
                 .cornerRadius(25)
             }
             .disabled(speechTranscriber.authorizationStatus != .authorized || isSimulatorMode)
+            
+            // Status indicator
+            if speechTranscriber.isRecording {
+                HStack {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 8, height: 8)
+                    Text("Recording... Speak now")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            // Error message display
+            if let errorMessage = speechTranscriber.errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+            }
         }
         .padding()
         .onChange(of: speechTranscriber.transcript) { oldValue, newValue in
-            if !isSimulatorMode {
+            if !isSimulatorMode && !newValue.isEmpty {
+                print("🔄 Transcript changed, classifying emotion for: '\(newValue)'")
                 emotionClassifier.classifyEmotion(from: newValue)
             }
+        }
+        .onChange(of: emotionClassifier.currentEmotion) { oldValue, newValue in
+            print("😊 Emotion changed: \(oldValue) -> \(newValue)")
         }
         .onAppear {
             if !isSimulator && speechTranscriber.authorizationStatus == .notDetermined {
