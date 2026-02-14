@@ -102,10 +102,17 @@ class SpeechTranscriber: ObservableObject {
                     self.transcript = result.bestTranscription.formattedString
                 }
                 
-                if error != nil || result?.isFinal == true {
-                    // Stop recording if error or final result
-                    self.stopRecording()
+                // Handle errors
+                if let error = error {
+                    print("Speech recognition error: \(error.localizedDescription)")
+                    // Only stop on non-recoverable errors
+                    if (error as NSError).code == 216 { // SFSpeechRecognizerErrorCode.audioEngineError
+                        self.stopRecording()
+                    }
                 }
+                
+                // Don't stop on final result - keep listening for continuous transcription
+                // The user will manually stop recording
             }
         }
         

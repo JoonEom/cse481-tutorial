@@ -26,20 +26,43 @@ class EmotionClassifier: ObservableObject {
     
     // Load the Core ML model
     private func loadModel() {
-        // The model should be added to the Xcode project
-        // This will generate a Swift class (e.g., DistilBERTEmotion)
-        // For now, we'll load it by name
-        guard let modelURL = Bundle.main.url(forResource: "DistilBERTEmotion", withExtension: "mlpackage") else {
+        // Try multiple possible locations for the model
+        var modelURL: URL?
+        
+        // Try 1: In MLAssets folder
+        if let url = Bundle.main.url(forResource: "MLAssets/DistilBERTEmotion", withExtension: "mlpackage") {
+            modelURL = url
+        }
+        // Try 2: Direct in bundle root
+        else if let url = Bundle.main.url(forResource: "DistilBERTEmotion", withExtension: "mlpackage") {
+            modelURL = url
+        }
+        // Try 3: Search in bundle
+        else if let url = Bundle.main.path(forResource: "DistilBERTEmotion", ofType: "mlpackage") {
+            modelURL = URL(fileURLWithPath: url)
+        }
+        
+        guard let modelURL = modelURL else {
             print("⚠️ Model not found. Make sure DistilBERTEmotion.mlpackage is added to the Xcode project.")
+            print("   Searched in: Bundle.main")
             return
         }
+        
+        print("📦 Found model at: \(modelURL.path)")
         
         do {
             let config = MLModelConfiguration()
             model = try MLModel(contentsOf: modelURL, configuration: config)
+            
+            // Verify model inputs/outputs
+            let modelDescription = model!.modelDescription
             print("✅ Model loaded successfully")
+            print("   Inputs: \(modelDescription.inputDescriptionsByName.keys.sorted())")
+            print("   Outputs: \(modelDescription.outputDescriptionsByName.keys.sorted())")
+            
         } catch {
             print("❌ Failed to load model: \(error)")
+            print("   Error details: \(error.localizedDescription)")
         }
     }
     
@@ -133,9 +156,18 @@ class EmotionClassifier: ObservableObject {
             // Tokenize text
             let (inputIds, attentionMask) = simpleTokenizer(text)
             
-            // Create MLMultiArrays
+            // Create MLMultiArrays with shape [1, 128]
             let inputIdsArray = try createMLMultiArray(from: inputIds, shape: [1, 128])
             let attentionMaskArray = try createMLMultiArray(from: attentionMask, shape: [1, 128])
+            
+            // Verify shapes match expected [1, 128]
+            guard inputIdsArray.shape.count == 2,
+                  inputIdsArray.shape[0].intValue == 1,
+                  inputIdsArray.shape[1].intValue == 128 else {
+                print("⚠️ input_ids shape mismatch: \(inputIdsArray.shape)")
+                currentEmotion = "unknown"
+                return
+            }
             
             // Create input dictionary
             let input = try MLDictionaryFeatureProvider(dictionary: [
@@ -167,9 +199,16 @@ class EmotionClassifier: ObservableObject {
             }
             
             guard let logitsArray = logitsArray else {
-                print("⚠️ Could not extract logits from prediction. Available keys: \(prediction.featureNames)")
+                print("⚠️ Could not extract logits from prediction.")
+                print("   Available output keys: \(prediction.featureNames)")
+                print("   Tried keys: \(possibleKeys)")
                 currentEmotion = "unknown"
                 return
+            }
+            
+            // Verify logits shape (should be 6 for 6 emotions)
+            if logitsArray.count != 6 {
+                print("⚠️ Unexpected logits count: \(logitsArray.count), expected 6")
             }
             
             // Find argmax (index with highest value)
