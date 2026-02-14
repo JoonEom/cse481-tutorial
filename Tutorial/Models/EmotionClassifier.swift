@@ -93,6 +93,42 @@ class EmotionClassifier: ObservableObject {
         }
     }
     
+    func predictEmotion(for text: String) -> Emotion {
+        guard let model = model else { return .neutral }
+        
+        do {
+            let (inputIds, attentionMask) = simpleTokenizer(text)
+            let inputIdsArray = try createMLMultiArray(from: inputIds, shape: [1, 128])
+            let attentionMaskArray = try createMLMultiArray(from: attentionMask, shape: [1, 128])
+            
+            let input = try MLDictionaryFeatureProvider(dictionary: [
+                "input_ids": MLFeatureValue(multiArray: inputIdsArray),
+                "attention_mask": MLFeatureValue(multiArray: attentionMaskArray)
+            ])
+            
+            let prediction = try model.prediction(from: input)
+            
+            let logitsArray: MLMultiArray
+            if let feature = prediction.featureValue(for: "linear_37"),
+               let array = feature.multiArrayValue {
+                logitsArray = array
+            } else if let firstOutput = prediction.featureNames.first,
+                      let feature = prediction.featureValue(for: firstOutput),
+                      let array = feature.multiArrayValue {
+                logitsArray = array
+            } else {
+                return .neutral
+            }
+            
+            if let emotion = interpretResults(logitsArray) {
+                return emotion
+            }
+            return .neutral
+        } catch {
+            return .neutral
+        }
+    }
+    
     private func performClassification(text: String) async {
         guard let model = model else {
             currentEmotion = "unknown"

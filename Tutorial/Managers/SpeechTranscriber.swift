@@ -10,9 +10,10 @@ import AVFoundation
 @MainActor
 class SpeechTranscriber: ObservableObject {
     @Published var transcript: String = ""
-    @Published var isRecording: Bool = false
+    @Published var isRunning: Bool = false
     @Published var authorizationStatus: SFSpeechRecognizerAuthorizationStatus = .notDetermined
     @Published var errorMessage: String? = nil
+    @Published var chatHistory: [ChatMessage] = []
     
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
@@ -74,7 +75,7 @@ class SpeechTranscriber: ObservableObject {
             return
         }
         
-        guard !isRecording else { return }
+        guard !isRunning else { return }
         
         recognitionTask?.cancel()
         recognitionTask = nil
@@ -117,6 +118,17 @@ class SpeechTranscriber: ObservableObject {
                         self.transcript = newTranscript
                         self.errorMessage = nil
                     }
+                    
+                    // When final, add to chat history (emotion will be classified in ContentView)
+                    if result.isFinal && !newTranscript.isEmpty {
+                        let message = ChatMessage(
+                            text: newTranscript,
+                            timestamp: Date(),
+                            emotion: .neutral
+                        )
+                        self.chatHistory.append(message)
+                        self.transcript = ""
+                    }
                 }
                 
                 if let error = error {
@@ -125,7 +137,7 @@ class SpeechTranscriber: ObservableObject {
             }
         }
         
-        isRecording = true
+        isRunning = true
         errorMessage = nil
     }
     
@@ -157,14 +169,13 @@ class SpeechTranscriber: ObservableObject {
         }
         
         try? AVAudioSession.sharedInstance().setActive(false)
-        isRecording = false
+        isRunning = false
     }
-    
-    func toggleRecording() {
-        if isRecording {
-            stopRecording()
-        } else {
-            startRecording()
-        }
-    }
+}
+
+struct ChatMessage: Identifiable {
+    let id = UUID()
+    let text: String
+    let timestamp: Date
+    let emotion: Emotion
 }

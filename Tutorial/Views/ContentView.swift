@@ -8,102 +8,157 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var speechTranscriber = SpeechTranscriber()
     @StateObject private var emotionClassifier = EmotionClassifier()
-    @State private var simulatorInputText: String = ""
-    @State private var isSimulatorMode: Bool = false
-    
-    private var isSimulator: Bool {
-        #if targetEnvironment(simulator)
-        return true
-        #else
-        return false
-        #endif
-    }
     
     var body: some View {
-        VStack(spacing: 30) {
-            RoundedRectangle(cornerRadius: 20)
-                .fill(emotionClassifier.colorForEmotion(emotionClassifier.currentEmotion))
-                .frame(width: 400, height: 200)
-                .overlay(
-                    Text(displayText.isEmpty ? "Start speaking..." : displayText)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .padding()
-                        .multilineTextAlignment(.center)
-                )
-                .shadow(radius: 10)
-            
-            Text("Emotion: \(emotionClassifier.currentEmotion.capitalized)")
-                .font(.system(size: 20, weight: .semibold))
-            
-            if isSimulator {
-                Toggle("Simulator Mode", isOn: $isSimulatorMode)
-                    .padding(.horizontal)
-                
-                if isSimulatorMode {
-                    TextEditor(text: $simulatorInputText)
-                        .frame(height: 100)
-                        .padding(.horizontal)
-                    
-                    Button("Run Emotion Classification") {
-                        emotionClassifier.classifyEmotion(from: simulatorInputText)
+        ZStack {
+            VStack(spacing: 0) {
+                // Header with status
+                HStack {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(speechTranscriber.isRunning ? Color.green : Color.gray)
+                            .frame(width: 10, height: 10)
+                        Text(speechTranscriber.isRunning ? "Transcribing..." : "Ready")
+                            .font(.headline)
+                            .foregroundStyle(speechTranscriber.isRunning ? .primary : .secondary)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.green)
+                    
+                    Spacer()
                 }
-            }
-            
-            Button(action: {
-                speechTranscriber.toggleRecording()
-            }) {
-                HStack {
-                    Image(systemName: speechTranscriber.isRecording ? "stop.circle.fill" : "mic.circle.fill")
-                    Text(speechTranscriber.isRecording ? "Stop Recording" : "Start Recording")
-                }
-                .foregroundColor(.white)
                 .padding()
-                .background(speechTranscriber.isRecording ? Color.red : Color.blue)
-                .cornerRadius(25)
-            }
-            .disabled(speechTranscriber.authorizationStatus != .authorized || isSimulatorMode)
-            
-            if speechTranscriber.isRecording {
-                HStack {
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 8, height: 8)
-                    Text("Recording... Speak now")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                .background(.ultraThinMaterial.opacity(0.5))
+                
+                // Chat Area
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 16) {
+                            ForEach(speechTranscriber.chatHistory) { message in
+                                ChatBubble(
+                                    text: message.text,
+                                    isPending: false,
+                                    emotion: classifyEmotionForText(message.text)
+                                )
+                                .id(message.id)
+                                .allowsHitTesting(false)
+                            }
+                            
+                            if !speechTranscriber.transcript.isEmpty {
+                                ChatBubble(
+                                    text: speechTranscriber.transcript,
+                                    isPending: true,
+                                    emotion: .neutral
+                                )
+                                .id("pending")
+                                .allowsHitTesting(false)
+                            }
+                        }
+                        .padding()
+                    }
+                    .onChange(of: speechTranscriber.chatHistory) { _ in
+                        if let lastId = speechTranscriber.chatHistory.last?.id {
+                            withAnimation {
+                                proxy.scrollTo(lastId, anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onChange(of: speechTranscriber.transcript) { _ in
+                        withAnimation {
+                            proxy.scrollTo("pending", anchor: .bottom)
+                        }
+                    }
                 }
+                
+                Spacer(minLength: 0)
             }
             
-            if let errorMessage = speechTranscriber.errorMessage {
-                Text(errorMessage)
-                    .font(.caption)
-                    .foregroundColor(.red)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+            // Start/Stop Button - Overlay at bottom
+            VStack {
+                Spacer()
+                Button(action: {
+                    print("🔘 Button tapped!")
+                    if speechTranscriber.isRunning {
+                        speechTranscriber.stopRecording()
+                    } else {
+                        speechTranscriber.startRecording()
+                    }
+                }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: speechTranscriber.isRunning ? "stop.fill" : "mic.fill")
+                            .font(.title2)
+                        Text(speechTranscriber.isRunning ? "Stop Transcribing" : "Start Transcribing")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(speechTranscriber.isRunning ? Color.red : Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(16)
+                }
+                .buttonStyle(.plain)
+                .contentShape(Rectangle())
+                .disabled(speechTranscriber.authorizationStatus != .authorized)
+                .padding()
             }
         }
-        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onChange(of: speechTranscriber.transcript) { oldValue, newValue in
-            if !isSimulatorMode && !newValue.isEmpty {
+            if !newValue.isEmpty {
                 emotionClassifier.classifyEmotion(from: newValue)
             }
         }
         .onAppear {
-            if !isSimulator && speechTranscriber.authorizationStatus == .notDetermined {
+            if speechTranscriber.authorizationStatus == .notDetermined {
                 speechTranscriber.requestAuthorization()
             }
         }
     }
     
-    private var displayText: String {
-        if isSimulatorMode {
-            return simulatorInputText
-        } else {
-            return speechTranscriber.transcript
+    private func classifyEmotionForText(_ text: String) -> Emotion {
+        return emotionClassifier.predictEmotion(for: text)
+    }
+}
+
+struct ChatBubble: View {
+    let text: String
+    let isPending: Bool
+    let emotion: Emotion
+    
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 4) {
+                Text(text)
+                    .padding(12)
+                    .background(colorForEmotion(emotion).opacity(0.9))
+                    .foregroundColor(.white)
+                    .cornerRadius(16)
+                    .opacity(isPending ? 0.7 : 1.0)
+                
+                if isPending {
+                    Text("Speaking...")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            
+            Circle()
+                .fill(Color.blue)
+                .frame(width: 32, height: 32)
+                .overlay(Text("0").font(.caption).foregroundColor(.white))
+        }
+    }
+    
+    private func colorForEmotion(_ emotion: Emotion) -> Color {
+        switch emotion {
+        case .sadness: return .blue
+        case .joy: return .yellow
+        case .love: return .pink
+        case .anger: return .red
+        case .fear: return .purple
+        case .surprise: return .orange
+        case .neutral: return .gray
         }
     }
 }
