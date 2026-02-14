@@ -176,7 +176,7 @@ class EmotionClassifier: ObservableObject {
             ])
             
             // Run prediction
-            let prediction = try model.prediction(from: input)
+            let prediction = try await model.prediction(from: input)
             
             // Get logits output
             // Try common output key names (the exact key depends on your model's metadata)
