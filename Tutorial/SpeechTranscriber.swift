@@ -14,11 +14,21 @@ class SpeechTranscriber: ObservableObject {
     @Published var transcript: String = ""
     @Published var isRecording: Bool = false
     @Published var authorizationStatus: SFSpeechRecognizerAuthorizationStatus = .notDetermined
+    @Published var errorMessage: String? = nil
     
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
+    
+    // Check if running in simulator
+    private var isSimulator: Bool {
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return false
+        #endif
+    }
     
     init() {
         checkAuthorization()
@@ -40,9 +50,19 @@ class SpeechTranscriber: ObservableObject {
     
     // Start recording and transcribing
     func startRecording() {
+        // Check if in simulator
+        if isSimulator {
+            errorMessage = "Simulator: Microphone not available. Use Simulator Mode to test."
+            return
+        }
+        
+        // Clear any previous errors
+        errorMessage = nil
+        
         // Check authorization
         guard authorizationStatus == .authorized else {
             requestAuthorization()
+            errorMessage = "Please grant speech recognition permission"
             return
         }
         
@@ -62,14 +82,18 @@ class SpeechTranscriber: ObservableObject {
             try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
-            print("Audio session setup failed: \(error)")
+            let errorMsg = "Audio session setup failed: \(error.localizedDescription)"
+            print(errorMsg)
+            errorMessage = errorMsg
             return
         }
         
         // Create recognition request
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
         guard let recognitionRequest = recognitionRequest else {
-            print("Unable to create recognition request")
+            let errorMsg = "Unable to create recognition request"
+            print(errorMsg)
+            errorMessage = errorMsg
             return
         }
         
@@ -89,7 +113,9 @@ class SpeechTranscriber: ObservableObject {
         do {
             try audioEngine.start()
         } catch {
-            print("Audio engine failed to start: \(error)")
+            let errorMsg = "Audio engine failed to start: \(error.localizedDescription). This often happens in simulators."
+            print(errorMsg)
+            errorMessage = errorMsg
             return
         }
         
@@ -100,14 +126,21 @@ class SpeechTranscriber: ObservableObject {
                 
                 if let result = result {
                     self.transcript = result.bestTranscription.formattedString
+                    self.errorMessage = nil // Clear error on success
                 }
                 
                 // Handle errors
                 if let error = error {
-                    print("Speech recognition error: \(error.localizedDescription)")
+                    let errorCode = (error as NSError).code
+                    print("Speech recognition error: \(error.localizedDescription) (code: \(errorCode))")
+                    
                     // Only stop on non-recoverable errors
-                    if (error as NSError).code == 216 { // SFSpeechRecognizerErrorCode.audioEngineError
+                    if errorCode == 216 { // SFSpeechRecognizerErrorCode.audioEngineError
+                        self.errorMessage = "Audio engine error. Try again or use Simulator Mode."
                         self.stopRecording()
+                    } else if errorCode != 0 {
+                        // Other errors (but not 0 which is "no error")
+                        self.errorMessage = "Recognition error: \(error.localizedDescription)"
                     }
                 }
                 
@@ -117,6 +150,7 @@ class SpeechTranscriber: ObservableObject {
         }
         
         isRecording = true
+        errorMessage = nil
     }
     
     // Stop recording
