@@ -1,7 +1,3 @@
-//
-//  TutorialApp.swift
-//  Tutorial
-//
 
 import SwiftUI
 

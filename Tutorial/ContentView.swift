@@ -5,10 +5,6 @@ struct ContentView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            Text("Last Spoken Sentence:")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-            
             Text(speechManager.transcribedText)
                 .font(.largeTitle)
                 .multilineTextAlignment(.center)
@@ -17,11 +13,11 @@ struct ContentView: View {
             Button(action: {
                 speechManager.startTranscribing()
             }) {
-                Label("Start Listening", systemImage: "mic.fill")
+                Label("Start", systemImage: "mic.fill")
             }
             .buttonStyle(.borderedProminent)
         }
         .padding(40)
-        .glassBackgroundEffect() // The "Magic" visionOS look
+        .glassBackgroundEffect()
     }
 }

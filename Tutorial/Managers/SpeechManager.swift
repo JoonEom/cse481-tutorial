@@ -9,7 +9,7 @@ class SpeechManager {
     private var recognitionTask: SFSpeechRecognitionTask?
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
     
-    var transcribedText: String = "Wait for it..."
+    var transcribedText: String = "Listening..."
 
     func startTranscribing() {
         // Reset the task if it's already running
@@ -22,12 +22,11 @@ class SpeechManager {
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
         let inputNode = audioEngine.inputNode
         
-        // Final results only toggle (optional)
         recognitionRequest?.shouldReportPartialResults = true
         
         recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest!) { result, error in
             if let result = result {
-                // Here's the logic: Grab the last segment/sentence
+               
                 let bestString = result.bestTranscription.formattedString
                 if let lastSentence = bestString.components(separatedBy: ". ").last {
                     self.transcribedText = lastSentence
@@ -41,6 +40,7 @@ class SpeechManager {
         }
         
         let recordingFormat = inputNode.outputFormat(forBus: 0)
+        inputNode.removeTap(onBus: 0)
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { (buffer, _) in
             self.recognitionRequest?.append(buffer)
         }
