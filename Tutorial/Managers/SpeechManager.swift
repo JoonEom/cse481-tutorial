@@ -12,7 +12,6 @@ class SpeechManager {
     var transcribedText: String = "Listening..."
 
     func startTranscribing() {
-        // Reset the task if it's already running
         recognitionTask?.cancel()
         
         let audioSession = AVAudioSession.sharedInstance()

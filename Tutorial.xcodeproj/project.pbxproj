@@ -8,6 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		51F7C6342F417EFB00D6366B /* RealityKitContent in Frameworks */ = {isa = PBXBuildFile; productRef = 51F7C6332F417EFB00D6366B /* RealityKitContent */; };
+		51F7C6832F4184D100D6366B /* Hub in Frameworks */ = {isa = PBXBuildFile; productRef = 51F7C6822F4184D100D6366B /* Hub */; };
+		51F7C6852F4184D100D6366B /* Tokenizers in Frameworks */ = {isa = PBXBuildFile; productRef = 51F7C6842F4184D100D6366B /* Tokenizers */; };
+		51F7C6872F4184D100D6366B /* Transformers in Frameworks */ = {isa = PBXBuildFile; productRef = 51F7C6862F4184D100D6366B /* Transformers */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,7 +43,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				51F7C6832F4184D100D6366B /* Hub in Frameworks */,
 				51F7C6342F417EFB00D6366B /* RealityKitContent in Frameworks */,
+				51F7C6872F4184D100D6366B /* Transformers in Frameworks */,
+				51F7C6852F4184D100D6366B /* Tokenizers in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -92,6 +98,9 @@
 			name = Tutorial;
 			packageProductDependencies = (
 				51F7C6332F417EFB00D6366B /* RealityKitContent */,
+				51F7C6822F4184D100D6366B /* Hub */,
+				51F7C6842F4184D100D6366B /* Tokenizers */,
+				51F7C6862F4184D100D6366B /* Transformers */,
 			);
 			productName = Tutorial;
 			productReference = 2926C9D62F3FF49300F59B94 /* Tutorial.app */;
@@ -123,6 +132,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				51F7C6322F417EFB00D6366B /* XCLocalSwiftPackageReference "Packages/RealityKitContent" */,
+				51F7C6812F4184D100D6366B /* XCRemoteSwiftPackageReference "swift-transformers" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2926C9D72F3FF49300F59B94 /* Products */;
@@ -356,10 +366,36 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		51F7C6812F4184D100D6366B /* XCRemoteSwiftPackageReference "swift-transformers" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/huggingface/swift-transformers";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.1.6;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		51F7C6332F417EFB00D6366B /* RealityKitContent */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = RealityKitContent;
+		};
+		51F7C6822F4184D100D6366B /* Hub */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 51F7C6812F4184D100D6366B /* XCRemoteSwiftPackageReference "swift-transformers" */;
+			productName = Hub;
+		};
+		51F7C6842F4184D100D6366B /* Tokenizers */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 51F7C6812F4184D100D6366B /* XCRemoteSwiftPackageReference "swift-transformers" */;
+			productName = Tokenizers;
+		};
+		51F7C6862F4184D100D6366B /* Transformers */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 51F7C6812F4184D100D6366B /* XCRemoteSwiftPackageReference "swift-transformers" */;
+			productName = Transformers;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
