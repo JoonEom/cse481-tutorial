@@ -4,7 +4,7 @@ import Observation
 
 @Observable
 class EmotionClassifier {
-    let model: DistilBERTEmotion
+    // let model: DistilBERTEmotion
     let tokenizer = EmotionTokenizer()
     var isReady = false
 
