@@ -10,6 +10,7 @@ class EmotionClassifier {
 
     init() {
         /// TODO: Initialize tokenizer and model
+        self.isReady = true
     }
 
     func predictEmotion(for text: String) -> Emotion {
