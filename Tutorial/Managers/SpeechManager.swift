@@ -10,9 +10,12 @@ class SpeechManager {
     private var recognitionTask: SFSpeechRecognitionTask?
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
 
-    var transcribedText: String = "Listening..."
+    var transcribedText: String = ""
+    var isRecording = false
 
     func startTranscribing() {
+        isRecording = true
+        transcribedText = ""
         recognitionTask?.cancel()
 
         let audioSession = AVAudioSession.sharedInstance()
@@ -38,6 +41,7 @@ class SpeechManager {
                     inputNode.removeTap(onBus: 0)
                     self.recognitionRequest = nil
                     self.recognitionTask = nil
+                    self.isRecording = false
                 }
             }
         }
@@ -50,5 +54,13 @@ class SpeechManager {
 
         audioEngine.prepare()
         try? audioEngine.start()
+    }
+
+    func stopTranscribing() {
+        audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
+        recognitionRequest?.endAudio()
+        recognitionTask?.cancel()
+        isRecording = false
     }
 }

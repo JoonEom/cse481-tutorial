@@ -7,27 +7,42 @@ struct ContentView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            Text(speechManager.transcribedText)
+            if !classifier.isReady {
+                ProgressView("Loading Emotion Model...")
+                    .padding()
+            }
+            
+            Text(speechManager.transcribedText.isEmpty ? (speechManager.isRecording ? "Listening..." : "Transcription will appear here...") : speechManager.transcribedText)
                 .font(.largeTitle)
                 .multilineTextAlignment(.center)
                 .padding()
             
-            Text(self.emotion)
-                .font(.headline)
-                .foregroundStyle(.primary)
+            if !self.emotion.isEmpty && !speechManager.isRecording {
+                Text("Detected Emotion: \(self.emotion)")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+            }
             
             Button(action: {
-                speechManager.startTranscribing()
+                if speechManager.isRecording {
+                    speechManager.stopTranscribing()
+                } else {
+                    self.emotion = ""
+                    speechManager.startTranscribing()
+                }
             }) {
-                Label("Start", systemImage: "mic.fill")
+                Label(speechManager.isRecording ? "Stop Recording" : "Start Recording", 
+                      systemImage: speechManager.isRecording ? "stop.circle.fill" : "mic.fill")
             }
             .buttonStyle(.borderedProminent)
+            .tint(speechManager.isRecording ? .red : .blue)
+            
             Button(action: {
                 analyzeCurrentSpeech()
             }) {
-                Label("Analyze", systemImage: "face.smiling.fill")
+                Label("Analyze Emotion", systemImage: "face.smiling.fill")
             }
-            .disabled(speechManager.transcribedText.isEmpty)
+            .disabled(!classifier.isReady || speechManager.transcribedText.isEmpty || speechManager.isRecording)
         }
         .padding(40)
         .glassBackgroundEffect()

@@ -55,7 +55,7 @@ class EmotionClassifier {
             }
 
             let output = try model.prediction(input_ids: inputIdsArr, attention_mask: attentionMaskArr)
-            let probabilities = output.linear_37
+            let probabilities = output.probabilities
             return interpretResults(probabilities)
         } catch {
             print("Prediction failed with \(error)")
