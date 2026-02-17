@@ -4,7 +4,7 @@ struct ContentView: View {
     @State private var speechManager = SpeechManager()
     @State private var emotion: String = ""
     private let classifier = EmotionClassifier()
-    
+
     var body: some View {
         VStack(spacing: 20) {
             if !classifier.isReady {
@@ -48,6 +48,7 @@ struct ContentView: View {
         .glassBackgroundEffect()
     }
     private func analyzeCurrentSpeech() {
-        self.emotion = classifier.predictEmotion(for: speechManager.transcribedText).rawValue
+        /// TODO: Analyze emotion
+        self.emotion = Emotion.neutral.rawValue
     }
 }
